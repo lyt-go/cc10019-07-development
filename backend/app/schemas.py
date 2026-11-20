@@ -161,6 +161,14 @@ class EventAggregateEntry(BaseModel):
     filter_expr: str = Field("", description="过滤条件")
     output_table: str = Field(..., description="输出表名")
     update_cycle: str = Field(..., description="更新周期")
+    detail_retention_hours: list[int] = Field(
+        default_factory=list,
+        description="保留分钟明细的整点小时；不在列表中的小时只保留整桶统计",
+    )
+    pending_backfill_hours: list[int] = Field(
+        default_factory=list,
+        description="仍有迟到事件待补录的整点小时",
+    )
 
 
 # ========== 行为路径 ==========
@@ -359,6 +367,10 @@ class BehaviorHeatmapEntry(BaseModel):
     color_scale: str = Field(..., description="色阶规则")
     output_image: str = Field("", description="输出图片路径")
     refresh_freq: str = Field(..., description="刷新频率")
+    aggregate_config_id: str = Field(
+        "",
+        description="指定消费的事件聚合配置；为空时按事件选取最新聚合版本",
+    )
 
 
 # ========== 数据链路产物 ==========
@@ -385,6 +397,12 @@ class AggResult(BaseModel):
     result_rows: list[dict[str, Any]] = Field(default_factory=list)
     total_count: int = 0
     output_table: str = ""
+    window_start: str = ""
+    window_end: str = ""
+    version: str = ""
+    coverage: list[dict[str, Any]] = Field(default_factory=list, description="按小时列出的明细覆盖情况")
+    detail_hours: list[int] = Field(default_factory=list, description="本次有分钟明细的小时")
+    whole_hours: list[int] = Field(default_factory=list, description="本次只有整桶统计的小时")
 
 
 class TagComputeResult(BaseModel):

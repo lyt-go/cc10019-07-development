@@ -6,7 +6,12 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 
 from app.schemas import ActionPayload, ActionResult
-from app.services.event_aggregate import aggregate_events, get_aggregate_result
+from app.services.event_aggregate import (
+    aggregate_events,
+    backfill_hour,
+    get_aggregate_result,
+    query_aggregate_detail,
+)
 from app.store import store
 
 router = APIRouter(prefix="/api/event-aggregate", tags=["event_aggregate"])
@@ -26,6 +31,41 @@ def index(page: int = 1, size: int = 20) -> dict[str, Any]:
 def export_entries() -> dict[str, Any]:
     rows = store.rows("event_aggregate")
     return {"items": rows, "total": len(rows)}
+
+
+@router.get("/{config_id}/detail")
+def detail_range(
+    config_id: str,
+    start: str,
+    end: str,
+    version: str | None = None,
+    dimension: str | None = None,
+    dimension_value: str | None = None,
+) -> dict[str, Any]:
+    """按开始/结束时间查询事件聚合明细，按小时桶返回覆盖情况。"""
+    try:
+        return query_aggregate_detail(
+            config_id,
+            start=start,
+            end=end,
+            version=version,
+            dimension=dimension,
+            dimension_value=dimension_value,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{config_id}/backfill")
+def backfill(config_id: str, hour: int) -> ActionResult:
+    """补齐某个小时的迟到事件，并发布新的聚合版本。"""
+    try:
+        result = backfill_hour(config_id, hour)
+        return ActionResult(ok=True, message="Backfilled", entry=result.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{entry_id}")
 def detail(entry_id: int) -> dict[str, Any]:
     row = store.find("event_aggregate", entry_id)

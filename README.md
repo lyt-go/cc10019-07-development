@@ -75,5 +75,29 @@ npm run dev
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
 
+## 事件聚合的区间查询与聚合版本
+
+事件聚合不再只有整小时统计：查询可以按开始/结束时间取区间明细。
+
+- `GET /api/event-aggregate/{config_id}/detail?start=09:40&end=10:20`
+  按小时桶返回区间明细，每个桶带 `coverage_status`、`coverage_ratio`、
+  `source`（`whole_bucket` / `minute_detail` / `unavailable`）、`exact`、
+  `comparable`。
+- 查询整个小时且该小时已补齐时，仍使用历史整桶统计；
+- 查询只覆盖桶的一部分，而该小时没有保留分钟明细时，返回
+  `missing_detail` 且不给数值——不会把整小时总数摊到区间上；
+- 该小时仍在补录（`pending_backfill_hours`）时，整桶统计标为 `partial`，
+  分钟明细按入库水位算覆盖率，结果只当作下界；
+- 每次聚合都会发布一个不可变版本（`EA-xxx@vN`），`version` 参数可钉住旧版本。
+
+`POST /api/event-aggregate/{config_id}/backfill?hour=10` 补齐该小时的迟到事件
+并发布新版本。
+
+行为热力的 `POST /api/behavior-heatmap/{config_id}/generate?start=&end=&version=`
+只读取事件聚合明细：生成开始时钉住一个聚合版本，整张图所有格子都来自同一版本；
+每个格子记录自己实际覆盖的时间桶；色阶 `scale_min` / `scale_max` 只由
+`comparable` 的格子决定，被排除的格子与没有落出格子的时间桶分别在
+`excluded_cells` / `unavailable_buckets` 中列出原因。
+
 领域：数据工程
 子方向：数据分析与数据应用

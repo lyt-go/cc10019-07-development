@@ -367,6 +367,10 @@ SEED_ROWS: dict[str, list[dict[str, Any]]] = {
             "filter_expr": "",
             "output_table": "agg_page_view_hourly",
             "update_cycle": "hourly",
+            # 只有十点保留分钟明细；九点只留整桶统计。
+            "detail_retention_hours": [10],
+            # 十点仍在补录迟到事件，整桶统计此刻不可当精确值使用。
+            "pending_backfill_hours": [10],
         },
         {
             "id": 2,
@@ -395,6 +399,23 @@ SEED_ROWS: dict[str, list[dict[str, Any]]] = {
             "filter_expr": "",
             "output_table": "agg_order_daily",
             "update_cycle": "daily",
+        },
+        {
+            # 行为热力 BH-001 的小时级数据源：九点只有整桶统计，十点仍在补录。
+            "id": 4,
+            "status": "已生效",
+            "pending": False,
+            "abnormal": False,
+            "config_id": "EA-004",
+            "event_id": "EV-002",
+            "agg_dimensions": ["page_url", "ATTR-004"],
+            "agg_function": "count",
+            "time_grain": "hour",
+            "filter_expr": "",
+            "output_table": "agg_item_click_hourly",
+            "update_cycle": "hourly",
+            "detail_retention_hours": [10],
+            "pending_backfill_hours": [10],
         },
     ],
     # ========== 会话切割策略 ==========
@@ -760,12 +781,13 @@ SEED_ROWS: dict[str, list[dict[str, Any]]] = {
             "abnormal": False,
             "config_id": "BH-001",
             "event_id": "EV-002",
-            "time_range": "2026-11-01/2026-11-15",
+            "time_range": "2026-11-15/2026-11-15",
             "spatial_dim": "page",
             "agg_grain": "hour",
             "color_scale": "viridis",
             "output_image": "/heatmap/item_click_page_20261115.png",
             "refresh_freq": "daily",
+            "aggregate_config_id": "EA-004",
         },
         {
             "id": 2,

@@ -26,21 +26,20 @@ def index(page: int = 1, size: int = 20) -> dict[str, Any]:
 def export_entries() -> dict[str, Any]:
     rows = store.rows("behavior_heatmap")
     return {"items": rows, "total": len(rows)}
-@router.get("/{entry_id}")
-def detail(entry_id: int) -> dict[str, Any]:
-    row = store.find("behavior_heatmap", entry_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="Not found")
-    return row
 
 
 @router.post("/{config_id}/generate")
-def generate(config_id: str) -> ActionResult:
+def generate(
+    config_id: str,
+    start: str | None = None,
+    end: str | None = None,
+    version: str | None = None,
+) -> ActionResult:
     try:
-        result = generate_heatmap(config_id)
+        result = generate_heatmap(config_id, start=start, end=end, version=version)
         return ActionResult(ok=True, message="Generated", entry=result)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{config_id}/result")
